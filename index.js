@@ -1,3 +1,4 @@
+const fs = require("fs");
 const MP4Box = require('mp4box');
 const { readByBlocksWorker, readByBlocks } = require('./code/readBlock');
 const InlineWorker = require('./code/inline-worker');
@@ -174,6 +175,25 @@ function GPMFExtract (
       //Nodejs
       if (typeof file === 'function') {
         file(mp4boxFile);
+      }
+      else if (typeof file === 'string') {
+        const chunk = 300 * 1024 * 1024;
+        const stream = fs.createReadStream(file, { highWaterMark: chunk });
+        let bytesRead = 0;
+        stream.on("end", () => {
+          mp4boxFile.flush();
+        });
+        stream.on("data", (chunk) => {
+          const arrayBuffer = new Uint8Array(chunk).buffer;
+          arrayBuffer.fileStart = bytesRead;
+          mp4boxFile.appendBuffer(arrayBuffer);
+          bytesRead += chunk.length;
+        });
+        stream.on("error", function(err) {
+          mp4boxFile.flush();
+          reject('Stream data error');
+        });
+        stream.resume();
       } else if (typeof Buffer == 'function' && file instanceof Buffer) {
         var arrayBuffer = toArrayBuffer(file);
         if (arrayBuffer.byteLength === 0) reject('File not compatible');
