@@ -102,6 +102,7 @@ function GPMFExtract (
           var rawData = browserMode ? uintArr : toBuffer(uintArr);
 
           //And return it
+          mp4boxFile = MP4Box.createFile();
           resolve({ rawData, timing });
         };
         mp4boxFile.start();
@@ -191,7 +192,7 @@ function GPMFExtract (
         });
         stream.on("error", function(err) {
           mp4boxFile.flush();
-          reject('Stream data error');
+          reject('Stream data error '+ err);
         });
         stream.resume();
       } else if (typeof Buffer == 'function' && file instanceof Buffer) {
