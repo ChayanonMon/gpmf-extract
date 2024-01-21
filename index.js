@@ -90,7 +90,7 @@ function GPMFExtract (
           uintArr = new Uint8Array(totalSamples);
           var runningCount = 0;
           samples.forEach(function (sample) {
-            timing.samples.push({ cts: sample.cts, duration: sample.duration });
+            timing.samples.push({ cts: sample.timescale ? (sample.cts * 1000) / sample.timescale : sample.cts , duration: sample.duration });
             // The loop prevents Firefox from crashing
             for (var i = 0; i < sample.size; i++) {
               uintArr.set(sample.data, runningCount);
