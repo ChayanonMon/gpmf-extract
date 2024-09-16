@@ -1,29 +1,40 @@
-module.exports = class InlineWorker {
-  constructor(
-    /** @type {() => any} */
-    func,
-    /** @type {any} */
-    self = { },
-  ) {
-    if (Worker && Blob && URL) {
-      const functionBody = func.toString().trim().match(
-        /^function\s*\w*\s*\([\w\s,='"`]*\)\s*{([\w\W]*?)}$/
-      )[1];
-
-      return new Worker(URL.createObjectURL(
-        new Blob([ functionBody ], { type: "text/javascript" })
-      ));
+class InlineWorker {
+  constructor(func, self = {}) {
+    if (
+      typeof Worker !== "undefined" &&
+      typeof Blob !== "undefined" &&
+      typeof URL !== "undefined"
+    ) {
+      const blob = new Blob(["(" + func.toString() + ")()"], {
+        type: "text/javascript",
+      });
+      const url = URL.createObjectURL(blob);
+      this.worker = new Worker(url);
+    } else {
+      // Fallback for environments without Worker support
+      this.self = self;
+      this.self.postMessage = (data) => {
+        setTimeout(() => this.self.onmessage({ data }), 0);
+      };
+      setTimeout(() => func.call(self, self), 0);
     }
-
-    this.self = self;
-    this.self.postMessage = function postMessage(data) {
-      setTimeout(() => this.self.onmessage({ data: data }), 0);
-    };
-
-    setTimeout(func.bind(self, self), 0);
   }
 
   postMessage(data) {
-    setTimeout(() => this.self.onmessage({ data: data }), 0);
+    if (this.worker) {
+      this.worker.postMessage(data);
+    } else {
+      setTimeout(() => this.self.onmessage({ data }), 0);
+    }
   }
-};
+
+  set onmessage(handler) {
+    if (this.worker) {
+      this.worker.onmessage = handler;
+    } else {
+      this.self.onmessage = handler;
+    }
+  }
+}
+
+module.exports = InlineWorker;
